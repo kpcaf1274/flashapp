@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>フラッシュカード</title>
+    <style>
+        #cardContainer {
+            display: none;
+            border: 1px solid black;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            user-select: none;
+            width: 300px;
+            margin: auto;
+            font-size: 20px;
+            background-color: white;
+        }
+        #sectionSelectContainer {
+            display: none;
+            text-align: center;
+            margin: 20px;
+        }
+        .small-text {
+            font-size: 12px;
+            color: gray;
+            text-align: center;
+        }
+        .info-container {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: gray;
+        }
+        .button-container {
+            display: flex;
+            bottom: 0; /* 画面の最下部に配置 */
+            justify-content: space-between; /* ボタンを左右に寄せる */
+            align-items: center; /* ボタンを垂直方向に中央揃え */
+            margin-top: auto;
+            padding: 0 20px; /* 左右に余白を追加 */
+        }
+        .button-container button {
+            padding: 30px 30px; /* ボタンのサイズを大きくする */
+            font-size: 25px; /* フォントサイズを大きくする */
+            cursor: pointer; /* カーソルをポインタに変更 */
+        }
+        #prevButton {
+            margin-right: auto; /* 戻るボタンを左寄せ */
+        }
+        #nextButton {
+            margin-left: auto; /* 次へボタンを右寄せ */
+        }
+        #flipButton {
+            margin: 0 10px; /* Flipボタンの左右に余白を追加 */
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="csvFileInput" accept=".csv">
+    <div id="sectionSelectContainer">
+        <label for="sectionSelect">セクションを選択：</label>
+        <select id="sectionSelect"></select>
+        <button id="startButton">開始</button>
+    </div>
+    <div class="info-container">
+        <span id="cardNumber"></span>
+        <span id="cardSection"></span>
+        <span id="cardProgress"></span>
+        <span id="defaultLanguage">デフォルト:表</span>
+        <span id="switch">🔊:on</span>
+    </div>
+    <div id="cardContainer" style="margin-top: 30px;">
+        <p id="cardText"></p>
+    </div>
+
+    <div style="text-align: right; margin-top: 10px;">
+        <button id="audioButton" style="display: none;">🔊 音声を再生</button>
+    </div>
+    <div style="text-align: center; margin-top: 10px;">
+        <button id="audioswitch" style="display: none;">audio-auto on/off</button>
+        <button id="toggleLanguageButton" style="display: none;">デフォルト切り替え</button>
+        <button id="backToSectionButton" style="display: none;">セクション選択に戻る</button>
+        <button id="saveCsvButton" style="display: none;">CSVを保存</button>
+        <div id="memoContainer" style="display: none; margin-top: 10px; font-size: 12px; color: gray;" contenteditable="true"></div>
+    </div>
+    <div class="button-container">
+        <button id="prevButton" style="display: none;">戻る</button>
+        <button id="flipButton" style="display: none;">Flip</button>
+        <button id="nextButton" style="display: none;">次へ</button>
+    </div>
+
+
+    
+    <script>
+        let flashcards = [];
+        let filteredFlashcards = [];
+        let currentIndex = 0;
+        let defaultJapanese = true;
+        let showingJapanese = true;
+        let autoaudio = true;
+
+        document.getElementById('csvFileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvText = e.target.result;
+                flashcards = parseCSV(csvText);
+                populateSectionDropdown();
+            };
+            reader.readAsText(file);
+        });
+
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length < 5) continue;
+                data.push({
+                    number: cols[0],
+                    section: cols[1],
+                    japanese: cols[2],
+                    english: cols[3],
+                    audio: cols[4].trim(),
+                    memo: cols[5] || ''
+                });
+            }
+            return data;
+        }
+
+        function populateSectionDropdown() {
+            const sectionSet = new Set(flashcards.map(card => card.section));
+            const sectionSelect = document.getElementById('sectionSelect');
+            sectionSelect.innerHTML = '';
+            sectionSet.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section;
+                option.textContent = section;
+                sectionSelect.appendChild(option);
+            });
+            document.getElementById('sectionSelectContainer').style.display = 'block';
+        }
+
+        function showFlashcard(index) {
+            if (index < 0 || index >= filteredFlashcards.length) return;
+            currentIndex = index;
+            const card = filteredFlashcards[currentIndex];
+            showingJapanese = defaultJapanese;
+            document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
+            document.getElementById('cardNumber').innerText = `No: ${card.number}`;
+            document.getElementById('cardSection').innerText = `セクション: ${card.section}`;
+            document.getElementById('cardProgress').innerText = `${currentIndex + 1} / ${filteredFlashcards.length}`;
+
+            const memoContainer = document.getElementById('memoContainer');
+            if (card.memo) {
+                memoContainer.innerText = `${card.memo}`;
+                memoContainer.style.display = 'block'; // メモがある場合は表示
+            } else {
+                memoContainer.style.display = 'none'; // メモがない場合は非表示
+            }
+
+        }
+
+        document.addEventListener("keydown", function (event) {
+    // 左キー（ArrowLeft）が押されたとき
+    if (event.key === "ArrowLeft") {
+        prev(); // 「戻る」の処理を実行
+    }
+    // 右キー（ArrowRight）が押されたとき
+    else if (event.key === "ArrowRight") {
+        next(); // 「次へ」の処理を実行
+    }
+    // エンターキー（Enter）が押されたとき
+    else if (event.key === "Enter") {
+        audioplay(); // 「Flip」の処理を実行
+    }
+    else if (event.key === "ArrowUp") {
+        flip(); // 「Flip」の処理を実行        
+    }
+    else if (event.key === "ArrowDown") {
+        flip(); // 「Flip」の処理を実行
+    }
+});
+
+
+
+        document.getElementById('cardContainer').addEventListener('click', flip);
+        document.getElementById('flipButton').addEventListener('click', flip);
+        document.getElementById('startButton').addEventListener('click', function() {
+            const selectedSection = document.getElementById('sectionSelect').value;
+            filteredFlashcards = flashcards.filter(card => card.section === selectedSection);
+            if (filteredFlashcards.length > 0) {
+                document.getElementById('sectionSelectContainer').style.display = 'none';
+                document.getElementById('cardContainer').style.display = 'block';
+                document.getElementById('nextButton').style.display = 'block';
+                document.getElementById('flipButton').style.display = 'block';
+                document.getElementById('prevButton').style.display = 'block';
+                document.getElementById('audioButton').style.display = 'block';
+                document.getElementById('backToSectionButton').style.display = 'block';
+                document.getElementById('toggleLanguageButton').style.display = 'block';
+                document.getElementById('audioswitch').style.display = 'block';
+                showFlashcard(0);
+            }
+        });
+ // 次へボタンの処理（セクション移動機能追加）
+document.getElementById('nextButton').addEventListener('click', next);
+// 戻るボタンの処理（セクション移動機能追加）
+document.getElementById('prevButton').addEventListener('click', prev);
+
+function flip(){
+            if (filteredFlashcards.length === 0) return;
+            showingJapanese = !showingJapanese;
+            const card = filteredFlashcards[currentIndex];
+            document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
+            autoaudioplay();
+}
+function next(){
+    if (currentIndex < filteredFlashcards.length - 1) {
+        // 現在のセクション内で次のカードに移動
+        currentIndex++;
+        showFlashcard(currentIndex);
+    } else {
+        // 現在のセクションの最後のカードに達した場合
+        const currentSection = filteredFlashcards[currentIndex].section;
+        const nextSection = getNextSection(currentSection);
+        if (nextSection) {
+            // 次のセクションに移動
+            moveToSection(nextSection);
+        } else {
+            // 次のセクションがない場合は何もしない（または最初のセクションに戻る）
+        }
+    }
+            autoaudioplay();
+}
+
+
+function prev() {
+    if (currentIndex > 0) {
+        // 現在のセクション内で前のカードに移動
+        currentIndex--;
+        showFlashcard(currentIndex);
+    } else {
+        // 現在のセクションの最初のカードに達した場合
+        const currentSection = filteredFlashcards[currentIndex].section;
+        const prevSection = getPreviousSection(currentSection);
+        if (prevSection) {
+            // 前のセクションに移動
+            moveToSection(prevSection);
+        } else {
+            // 前のセクションがない場合は何もしない（または最後のセクションに移動）
+        }
+    }
+
+            autoaudioplay();
+
+}
+// 次のセクションを取得する関数
+function getNextSection(currentSection) {
+    const sections = Array.from(new Set(flashcards.map(card => card.section)));
+    const currentIndex = sections.indexOf(currentSection);
+    if (currentIndex < sections.length - 1) {
+        return sections[currentIndex + 1];
+    }
+    return null; // 次のセクションがない場合
+}
+
+// 前のセクションを取得する関数
+function getPreviousSection(currentSection) {
+    const sections = Array.from(new Set(flashcards.map(card => card.section)));
+    const currentIndex = sections.indexOf(currentSection);
+    if (currentIndex > 0) {
+        return sections[currentIndex - 1];
+    }
+    return null; // 前のセクションがない場合
+}
+
+// 指定されたセクションに移動する関数
+function moveToSection(section) {
+    filteredFlashcards = flashcards.filter(card => card.section === section);
+    currentIndex = 0; // セクションの最初のカードに移動
+    showFlashcard(currentIndex);
+    document.getElementById('sectionSelect').value = section; // ドロップダウンを更新
+}
+ 
+function audioplay() {
+            const card = filteredFlashcards[currentIndex];
+            if (card.audio) {
+                const audio = new Audio(card.audio);
+                audio.play();
+        } 
+        };
+function autoaudioplay() {
+    if (autoaudio && !showingJapanese) {
+        audioplay();
+    }
+}
+
+        // 音声再生ボタンの処理
+        document.getElementById('audioButton').addEventListener('click', audioplay);
+
+// セクション選択に戻るボタンの処理
+        document.getElementById('backToSectionButton').addEventListener('click', function() {
+        document.getElementById('sectionSelectContainer').style.display = 'block';
+        document.getElementById('cardContainer').style.display = 'none';
+        document.getElementById('nextButton').style.display = 'none';
+        document.getElementById('flipButton').style.display = 'none';
+        document.getElementById('prevButton').style.display = 'none';
+        document.getElementById('audioButton').style.display = 'none';
+        document.getElementById('backToSectionButton').style.display = 'none';
+        document.getElementById('toggleLanguageButton').style.display = 'none';
+        document.getElementById('audioswitch').style.display = 'none';
+    });
+    // 音声切り替えボタンの処理
+    document.getElementById('audioswitch').addEventListener('click', function() {
+        autoaudio = !autoaudio;
+        document.getElementById('switch').innerText = `🔊: ${autoaudio ? 'on' : 'off'}`;
+        showFlashcard(currentIndex);
+    });
+
+
+
+    // デフォルト言語切り替えボタンの処理
+        document.getElementById('toggleLanguageButton').addEventListener('click', function() {
+        defaultJapanese = !defaultJapanese;
+        showingJapanese = defaultJapanese;
+        document.getElementById('defaultLanguage').innerText = `デフォルト: ${defaultJapanese ? '表' : '裏'}`;
+        showFlashcard(currentIndex);
+    });
+
+// メモ編集の処理
+document.getElementById('memoContainer').addEventListener('blur', function() {
+    const newMemo = this.innerText.replace('メモ: ', ''); // 「メモ: 」を除去
+    filteredFlashcards[currentIndex].memo = newMemo; // メモを更新
+    showFlashcard(currentIndex); // 表示を更新
+});
+
+// CSV保存の処理
+document.getElementById('saveCsvButton').addEventListener('click', function() {
+    const csvContent = convertToCSV(flashcards);
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'updated_flashcards.csv';
+    link.click();
+});
+
+// データをCSV形式に変換する関数
+function convertToCSV(data) {
+    const header = ['number', 'section', 'japanese', 'english', 'audio', 'memo'].join(',');
+    const rows = data.map(card => {
+        return [
+            card.number,
+            card.section,
+            card.japanese,
+            card.english,
+            card.audio,
+            card.memo || '' // メモがない場合は空文字
+        ].join(',');
+    });
+    return [header, ...rows].join('\n');
+}
+
+// showFlashcard関数の修正
+function showFlashcard(index) {
+    if (index < 0 || index >= filteredFlashcards.length) return;
+    currentIndex = index;
+    const card = filteredFlashcards[currentIndex];
+    showingJapanese = defaultJapanese;
+    document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
+    document.getElementById('cardNumber').innerText = `No: ${card.number}`;
+    document.getElementById('cardSection').innerText = `セクション: ${card.section}`;
+    document.getElementById('cardProgress').innerText = `${currentIndex + 1} / ${filteredFlashcards.length}`;
+    
+    //　音声を再生
+        autoaudioplay();
+
+    // メモを表示
+    const memoContainer = document.getElementById('memoContainer');
+    if (card.memo) {
+        memoContainer.innerText = `${card.memo}`;
+        memoContainer.style.display = 'block'; // メモがある場合は表示
+    } else {
+        memoContainer.innerText = '';
+        memoContainer.style.display = 'block'; // メモがない場合も編集可能にする
+    }
+
+    // CSV保存ボタンを表示
+    document.getElementById('saveCsvButton').style.display = 'block';
+}
+
+    </script>
+</body>
+</html>
