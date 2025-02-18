@@ -149,20 +149,22 @@
         }
 
 function showFlashcard(index) {
+    // learnedCardsのチェックを追加
     if (index < 0 || index >= filteredFlashcards.length || learnedCards.has(index)) {
-        // 表示できない場合は次のカードを探す
         moveToNextCard();
         return;
     }
 
-    const card = filteredFlashcards[index];
+    // 以降の処理を統合
+    currentIndex = index;
+    const card = filteredFlashcards[currentIndex];
     showingJapanese = defaultJapanese;
     document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
     document.getElementById('cardNumber').innerText = `No: ${card.number}`;
-    document.getElementById('cardSection').innerText = `セクション: ${card.section}`;
-    document.getElementById('cardProgress').innerText = `${index + 1} / ${filteredFlashcards.length}`;
+    document.getElementById('cardSection').innerText = `section: ${card.section}`;
+    document.getElementById('cardProgress').innerText = `${currentIndex + 1} / ${filteredFlashcards.length}`;
 
-    // メモを表示
+    // メモの表示
     const memoContainer = document.getElementById('memoContainer');
     if (card.memo) {
         memoContainer.innerText = `${card.memo}`;
@@ -172,7 +174,7 @@ function showFlashcard(index) {
         memoContainer.style.display = 'block';
     }
 
-    // 音声を再生
+    // 音声再生
     autoaudioplay();
 }
 
@@ -387,43 +389,6 @@ function convertToCSV(data) {
     });
     return [header, ...rows].join('\n');
 }
-
-// showFlashcard関数の修正
-function showFlashcard(index) {
-    if (index < 0 || index >= filteredFlashcards.length) return;
-    currentIndex = index;
-    const card = filteredFlashcards[currentIndex];
-    showingJapanese = defaultJapanese;
-    document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
-    document.getElementById('cardNumber').innerText = `No: ${card.number}`;
-    document.getElementById('cardSection').innerText = `セクション: ${card.section}`;
-    document.getElementById('cardProgress').innerText = `${currentIndex + 1} / ${filteredFlashcards.length}`;
-    
-    //　音声を再生
-        autoaudioplay();
-
-    // メモを表示
-    const memoContainer = document.getElementById('memoContainer');
-    if (card.memo) {
-        memoContainer.innerText = `${card.memo}`;
-        memoContainer.style.display = 'block'; // メモがある場合は表示
-    } else {
-        memoContainer.innerText = '';
-        memoContainer.style.display = 'block'; // メモがない場合も編集可能にする
-    }
-
-    // CSV保存ボタンを表示
-    document.getElementById('saveCsvButton').style.display = 'block';
-}
-document.getElementById('learnedButton').addEventListener('click', function() {
-    if (filteredFlashcards.length === 0) return;
-
-    // 現在のカードのインデックスを覚えたカードに追加
-    learnedCards.add(currentIndex);
-
-    // 次のカードを表示
-    moveToNextCard();
-});
 
 function moveToNextCard() {
     let nextIndex = currentIndex + 1;
