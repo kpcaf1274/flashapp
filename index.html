@@ -225,6 +225,16 @@ function showFlashcard(index) {
 document.getElementById('nextButton').addEventListener('click', next);
 // 戻るボタンの処理（セクション移動機能追加）
 document.getElementById('prevButton').addEventListener('click', prev);
+//　覚えたボタンの処理
+document.getElementById('learnedButton').addEventListener('click', function() {
+    if (filteredFlashcards.length === 0) return;
+
+    // 現在のカードのインデックスを覚えたカードに追加
+    learnedCards.add(currentIndex);
+
+    // 次のカードを表示
+    moveToNextCard();
+});
 // 復元ボタンの処理（セクション移動機能追加）        
 document.getElementById('restoreButton').addEventListener('click', function() {
     learnedCards.clear(); // 覚えたカードをリセット
