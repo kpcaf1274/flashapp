@@ -60,15 +60,15 @@
 <body>
     <input type="file" id="csvFileInput" accept=".csv">
     <div id="sectionSelectContainer">
-        <label for="sectionSelect">セクションを選択：</label>
+        <label for="sectionSelect">select section：</label>
         <select id="sectionSelect"></select>
-        <button id="startButton">開始</button>
+        <button id="startButton">start</button>
     </div>
     <div class="info-container">
         <span id="cardNumber"></span>
         <span id="cardSection"></span>
         <span id="cardProgress"></span>
-        <span id="defaultLanguage">デフォルト:表</span>
+        <span id="defaultLanguage">default:head</span>
         <span id="switch">🔊:on</span>
     </div>
     <div id="cardContainer" style="margin-top: 30px;">
@@ -76,19 +76,19 @@
     </div>
 
     <div style="text-align: right; margin-top: 10px;">
-        <button id="audioButton" style="display: none;">🔊 音声を再生</button>
+        <button id="audioButton" style="display: none;">🔊 play audio</button>
     </div>
     <div style="text-align: center; margin-top: 10px;">
         <button id="audioswitch" style="display: none;">audio-auto on/off</button>
-        <button id="toggleLanguageButton" style="display: none;">デフォルト切り替え</button>
-        <button id="backToSectionButton" style="display: none;">セクション選択に戻る</button>
-        <button id="saveCsvButton" style="display: none;">CSVを保存</button>
+        <button id="toggleLanguageButton" style="display: none;">change defalut</button>
+        <button id="backToSectionButton" style="display: none;">back to selection of section</button>
+        <button id="saveCsvButton" style="display: none;">save CSV</button>
         <div id="memoContainer" style="display: none; margin-top: 10px; font-size: 12px; color: gray;" contenteditable="true"></div>
     </div>
     <div class="button-container">
-        <button id="prevButton" style="display: none;">戻る</button>
+        <button id="prevButton" style="display: none;">Back</button>
         <button id="flipButton" style="display: none;">Flip</button>
-        <button id="nextButton" style="display: none;">次へ</button>
+        <button id="nextButton" style="display: none;">Next</button>
     </div>
 
 
@@ -152,7 +152,7 @@
             showingJapanese = defaultJapanese;
             document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
             document.getElementById('cardNumber').innerText = `No: ${card.number}`;
-            document.getElementById('cardSection').innerText = `セクション: ${card.section}`;
+            document.getElementById('cardSection').innerText = `section: ${card.section}`;
             document.getElementById('cardProgress').innerText = `${currentIndex + 1} / ${filteredFlashcards.length}`;
 
             const memoContainer = document.getElementById('memoContainer');
@@ -248,15 +248,28 @@ function prev() {
         const currentSection = filteredFlashcards[currentIndex].section;
         const prevSection = getPreviousSection(currentSection);
         if (prevSection) {
-            // 前のセクションに移動
-            moveToSection(prevSection);
+            // 前のセクションに移動し、最後のカードに移動
+            moveToSection(prevSection, true);
         } else {
-            // 前のセクションがない場合は何もしない（または最後のセクションに移動）
+            // 前のセクションがない場合は何もしない（または最初のセクションに戻る）
         }
     }
+    autoaudioplay();
+}
 
-            autoaudioplay();
-
+// 指定されたセクションに移動する関数
+// isPrevSection: 前のセクションの最後に移動するかどうか
+function moveToSection(section, isPrevSection = false) {
+    filteredFlashcards = flashcards.filter(card => card.section === section);
+    if (isPrevSection) {
+        // 前のセクションの最後のカードに移動
+        currentIndex = filteredFlashcards.length - 1;
+    } else {
+        // セクションの最初のカードに移動
+        currentIndex = 0;
+    }
+    showFlashcard(currentIndex);
+    document.getElementById('sectionSelect').value = section; // ドロップダウンを更新
 }
 // 次のセクションを取得する関数
 function getNextSection(currentSection) {
@@ -278,13 +291,7 @@ function getPreviousSection(currentSection) {
     return null; // 前のセクションがない場合
 }
 
-// 指定されたセクションに移動する関数
-function moveToSection(section) {
-    filteredFlashcards = flashcards.filter(card => card.section === section);
-    currentIndex = 0; // セクションの最初のカードに移動
-    showFlashcard(currentIndex);
-    document.getElementById('sectionSelect').value = section; // ドロップダウンを更新
-}
+
  
 function audioplay() {
             const card = filteredFlashcards[currentIndex];
