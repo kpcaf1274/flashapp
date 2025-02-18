@@ -225,14 +225,10 @@ function showFlashcard(index) {
 document.getElementById('nextButton').addEventListener('click', next);
 // 戻るボタンの処理（セクション移動機能追加）
 document.getElementById('prevButton').addEventListener('click', prev);
-//　覚えたボタンの処理
 document.getElementById('learnedButton').addEventListener('click', function() {
-    if (filteredFlashcards.length === 0) return;
-
-    // 現在のカードのインデックスを覚えたカードに追加
+    // 現在のカードを「覚えた」カードとしてマークする
     learnedCards.add(currentIndex);
-
-    // 次のカードを表示
+    // 覚えたカードは次回以降表示しないように、次のカードへ移動する
     moveToNextCard();
 });
 // 復元ボタンの処理（セクション移動機能追加）        
