@@ -84,6 +84,8 @@
         <button id="backToSectionButton" style="display: none;">back to selection of section</button>
         <button id="saveCsvButton" style="display: none;">save CSV</button>
         <div id="memoContainer" style="display: none; margin-top: 10px; font-size: 12px; color: gray;" contenteditable="true"></div>
+        <button id="learnedButton" style="display: none;">覚えた</button> <!-- 覚えたボタン -->
+        <button id="restoreButton" style="display: none;">復元</button> <!-- 復元ボタン -->
     </div>
     <div class="button-container">
         <button id="prevButton" style="display: none;">Back</button>
@@ -100,6 +102,7 @@
         let defaultJapanese = true;
         let showingJapanese = true;
         let autoaudio = true;
+        let learnedCards = new Set(); // 覚えたカードのインデックスを保存するセット
 
         document.getElementById('csvFileInput').addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -145,25 +148,33 @@
             document.getElementById('sectionSelectContainer').style.display = 'block';
         }
 
-        function showFlashcard(index) {
-            if (index < 0 || index >= filteredFlashcards.length) return;
-            currentIndex = index;
-            const card = filteredFlashcards[currentIndex];
-            showingJapanese = defaultJapanese;
-            document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
-            document.getElementById('cardNumber').innerText = `No: ${card.number}`;
-            document.getElementById('cardSection').innerText = `section: ${card.section}`;
-            document.getElementById('cardProgress').innerText = `${currentIndex + 1} / ${filteredFlashcards.length}`;
+function showFlashcard(index) {
+    if (index < 0 || index >= filteredFlashcards.length || learnedCards.has(index)) {
+        // 表示できない場合は次のカードを探す
+        moveToNextCard();
+        return;
+    }
 
-            const memoContainer = document.getElementById('memoContainer');
-            if (card.memo) {
-                memoContainer.innerText = `${card.memo}`;
-                memoContainer.style.display = 'block'; // メモがある場合は表示
-            } else {
-                memoContainer.style.display = 'none'; // メモがない場合は非表示
-            }
+    const card = filteredFlashcards[index];
+    showingJapanese = defaultJapanese;
+    document.getElementById('cardText').innerText = showingJapanese ? card.japanese : card.english;
+    document.getElementById('cardNumber').innerText = `No: ${card.number}`;
+    document.getElementById('cardSection').innerText = `セクション: ${card.section}`;
+    document.getElementById('cardProgress').innerText = `${index + 1} / ${filteredFlashcards.length}`;
 
-        }
+    // メモを表示
+    const memoContainer = document.getElementById('memoContainer');
+    if (card.memo) {
+        memoContainer.innerText = `${card.memo}`;
+        memoContainer.style.display = 'block';
+    } else {
+        memoContainer.innerText = '';
+        memoContainer.style.display = 'block';
+    }
+
+    // 音声を再生
+    autoaudioplay();
+}
 
         document.addEventListener("keydown", function (event) {
     // 左キー（ArrowLeft）が押されたとき
@@ -203,6 +214,8 @@
                 document.getElementById('backToSectionButton').style.display = 'block';
                 document.getElementById('toggleLanguageButton').style.display = 'block';
                 document.getElementById('audioswitch').style.display = 'block';
+                document.getElementById('learnedButton').style.display = 'block'; // 覚えたボタンを表示
+                document.getElementById('restoreButton').style.display = 'block'; // 復元ボタンを表示
                 showFlashcard(0);
             }
         });
@@ -347,13 +360,13 @@ document.getElementById('memoContainer').addEventListener('blur', function() {
 
 // CSV保存の処理
 document.getElementById('saveCsvButton').addEventListener('click', function() {
-    const csvContent = convertToCSV(flashcards);
+    const csvContent = convertToCSV(flashcards); // すべてのカードを保存
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'updated_flashcards.csv';
     link.click();
-});
+});        
 
 // データをCSV形式に変換する関数
 function convertToCSV(data) {
@@ -398,7 +411,40 @@ function showFlashcard(index) {
     // CSV保存ボタンを表示
     document.getElementById('saveCsvButton').style.display = 'block';
 }
+document.getElementById('learnedButton').addEventListener('click', function() {
+    if (filteredFlashcards.length === 0) return;
 
+    // 現在のカードのインデックスを覚えたカードに追加
+    learnedCards.add(currentIndex);
+
+    // 次のカードを表示
+    moveToNextCard();
+});
+
+function moveToNextCard() {
+    let nextIndex = currentIndex + 1;
+    while (nextIndex < filteredFlashcards.length && learnedCards.has(nextIndex)) {
+        nextIndex++; // 次の表示可能なカードを探す
+    }
+
+    if (nextIndex < filteredFlashcards.length) {
+        currentIndex = nextIndex;
+        showFlashcard(currentIndex);
+    } else {
+        // 表示可能なカードがない場合、最初のカードに戻る
+        currentIndex = 0;
+        while (currentIndex < filteredFlashcards.length && learnedCards.has(currentIndex)) {
+            currentIndex++;
+        }
+        if (currentIndex < filteredFlashcards.length) {
+            showFlashcard(currentIndex);
+        } else {
+        }
+    }
+}
+
+
+        
     </script>
 </body>
 </html>
