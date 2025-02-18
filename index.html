@@ -223,7 +223,11 @@ function showFlashcard(index) {
 document.getElementById('nextButton').addEventListener('click', next);
 // 戻るボタンの処理（セクション移動機能追加）
 document.getElementById('prevButton').addEventListener('click', prev);
-
+// 復元ボタンの処理（セクション移動機能追加）        
+document.getElementById('restoreButton').addEventListener('click', function() {
+    learnedCards.clear(); // 覚えたカードをリセット
+    showFlashcard(currentIndex); // 現在のカードを再表示
+});
 function flip(){
             if (filteredFlashcards.length === 0) return;
             showingJapanese = !showingJapanese;
